@@ -6,9 +6,13 @@ import asyncio
 wait_random = __import__('0-basic_async_syntax').wait_random
 
 
-def wait_n(n: int, max_delay: int):
+async def wait_n(n: int, max_delay: int):
     """
     call wait wait_random n times with max_delay
     """
+    awaited_delays = []
+
     for _ in range(0, n):
-        asyncio.run(max_delay)
+        awaited_delays.append(await wait_random(max_delay))
+
+    return awaited_delays
