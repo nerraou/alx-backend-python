@@ -6,7 +6,7 @@ Unittest for test_access_nested([..])
 import unittest
 from parameterized import parameterized
 from unittest import mock
-from utils import access_nested_map, get_json
+from utils import access_nested_map, get_json, memoize
 
 
 class TestAccessNestedMap(unittest.TestCase):
@@ -32,7 +32,7 @@ class TestAccessNestedMap(unittest.TestCase):
 
 
 class TestGetJson(unittest.TestCase):
-    """test access_nested_map"""
+    """test get_json"""
 
     @parameterized.expand([
         ("http://example.com", {"payload": True}),
@@ -41,14 +41,43 @@ class TestGetJson(unittest.TestCase):
     def test_get_json(self, test_url, test_payload):
         """Test return value"""
         response = {"return_value.json.return_value": test_payload}
-        patcher = mock.patch('requests.get', **response)
+        patcher = mock.patch("requests.get", **response)
 
-        mock = patcher.start()
+        mock_call = patcher.start()
 
         self.assertEqual(get_json(test_url), test_payload)
+        mock_call.assert_called_once()
 
-        mock.assert_called_once()
         patcher.stop()
+
+
+class TestMemoize(unittest.TestCase):
+    """ Class for Testing Memoize """
+
+    def test_memoize(self):
+        """
+        test that a_property called only once
+        """
+
+        class TestClass:
+            """
+            TestClass for memoize
+            """
+
+            def a_method(self):
+                """non memoized test method"""
+                return 42
+
+            @memoize
+            def a_property(self):
+                """memoized test method"""
+                return self.a_method()
+
+        with mock.patch.object(TestClass, "a_method") as mk:
+            test_class = TestClass()
+            test_class.a_property()
+            test_class.a_property()
+            mk.assert_called_once()
 
 
 if __name__ == "__main__":
