@@ -4,9 +4,10 @@ Unittest for test_access_nested([..])
 """
 
 import unittest
-from parameterized import parameterized
+from parameterized import parameterized, parameterized_class
 from unittest.mock import patch, PropertyMock
 from client import GithubOrgClient
+from fixtures import TEST_PAYLOAD
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -65,6 +66,52 @@ class TestGithubOrgClient(unittest.TestCase):
         """test has_license"""
         result = GithubOrgClient.has_license(repo, license_key)
         self.assertEqual(result, expected)
+
+
+@parameterized_class(
+    ("org_payload", "repos_payload", "expected_repos", "apache2_repos"),
+    TEST_PAYLOAD
+)
+class TestIntegrationGithubOrgClient(unittest.TestCase):
+    """TestIntegrationGithubOrgClient"""
+
+    @classmethod
+    def setUpClass(cls):
+        """setup"""
+        config = {"return_value.json.side_effect":
+                  [
+                    cls.org_payload, cls.repos_payload,
+                    cls.org_payload, cls.repos_payload
+                  ]
+                  }
+        cls.get_patcher = patch("requests.get", **config)
+
+        cls.mock = cls.get_patcher.start()
+
+    def test_public_repos(self):
+        """test public repos"""
+        test_class = GithubOrgClient("google")
+
+        self.assertEqual(test_class.repos_payload, self.repos_payload)
+        self.assertEqual(test_class.public_repos(), self.expected_repos)
+        self.assertEqual(test_class.org, self.org_payload)
+        self.assertEqual(test_class.public_repos("XLICENSE"), [])
+        self.mock.assert_called()
+
+    def test_public_repos_with_license(self):
+        """test_public_repos_with_license"""
+        test_class = GithubOrgClient("google")
+
+        self.assertEqual(test_class.public_repos(), self.expected_repos)
+        self.assertEqual(test_class.public_repos(
+            "apache-2.0"), self.apache2_repos)
+        self.assertEqual(test_class.public_repos("XLICENSE"), [])
+        self.mock.assert_called()
+
+    @classmethod
+    def tearDownClass(cls):
+        """tearDownClass: stop patcher"""
+        cls.get_patcher.stop()
 
 
 if __name__ == "__main__":
